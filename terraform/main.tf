@@ -26,25 +26,35 @@ resource "aws_s3_bucket_acl" "tfstate" {
   acl    = "private"
 }
 
-terraform {
-   required_version = "=>0.14.9"
+resource "aws_dynamodb_table" "terraform_locks" {
+  name = "terraform_locks"
+  hash_key = "LockID"
+  read_capacity = 20
+  write_capacity = 20
+ 
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
 
+terraform {
   backend "s3" {
     bucket         = "nmatheus-tfstate-bucket"
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    #dynamodb_table = "terraform_locks"
+    dynamodb_table = "terraform_locks"
     encrypt        = true
   }
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.45.0"
+      version = "~> 4.47.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~>3.27"
+      version = "~> 3.4.3"
     }
   }
 }
