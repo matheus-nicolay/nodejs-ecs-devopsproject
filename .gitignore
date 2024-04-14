@@ -2,3 +2,5 @@ src/node_modules
 terraform/terraform.tfvars
 terraform/.terraform*
 .github/workflows/.secrets
+terraform/remote-state/.terraform*
+terraform/remote-state/terraform.tfstate

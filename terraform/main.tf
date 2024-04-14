@@ -4,40 +4,6 @@ provider "aws" {
   region     = var.aws_region
 }
 
-resource "aws_s3_bucket" "tfstate" {
-  bucket = var.tfstate_bucket_name
-
-  tags = {
-    Name = "tfstate-bucket"
-  }
-}
-
-resource "aws_s3_bucket_ownership_controls" "tfstate" {
-  bucket = aws_s3_bucket.tfstate.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-resource "aws_s3_bucket_acl" "tfstate" {
-  depends_on = [aws_s3_bucket_ownership_controls.tfstate]
-
-  bucket = aws_s3_bucket.tfstate.id
-  acl    = "private"
-}
-
-resource "aws_dynamodb_table" "terraform_locks" {
-  name = "terraform_locks"
-  hash_key = "LockID"
-  read_capacity = 20
-  write_capacity = 20
- 
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-}
-
 terraform {
   backend "s3" {
     bucket         = "nmatheus-tfstate-bucket"
@@ -59,13 +25,11 @@ terraform {
   }
 }
 
-
-
-resource "aws_ecs_cluster" "this" {
+resource "aws_ecs_cluster" "nodejs-ecs_cluster" {
   name = var.cluster_name
 }
 
-resource "aws_ecs_task_definition" "this" {
+resource "aws_ecs_task_definition" "nodejs-ecs_td" {
   family                   = var.cluster_task
   container_definitions    = <<DEFINITION
   [
@@ -113,40 +77,42 @@ resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
 }
 
 
-resource "aws_ecs_service" "this" {
+resource "aws_ecs_service" "nodejs-ecs_service" {
   name                = var.cluster_service
-  cluster             = aws_ecs_cluster.this.id
-  task_definition     = aws_ecs_task_definition.this.arn
+  cluster             = aws_ecs_cluster.nodejs-ecs_cluster.id
+  task_definition     = aws_ecs_task_definition.nodejs-ecs_td.arn
   launch_type         = "FARGATE"
   scheduling_strategy = "REPLICA"
   desired_count       = var.desired_capacity
 
   load_balancer {
     target_group_arn = aws_lb_target_group.this.arn
-    container_name   = aws_ecs_task_definition.this.family
+    container_name   = aws_ecs_task_definition.nodejs-ecs_td.family
     container_port   = var.container_port
   }
 
   network_configuration {
-    subnets          = [aws_subnet.this["pub_a"].id, aws_subnet.this["pub_b"].id]
-    security_groups  = [aws_security_group.this.id]
+    subnets          = [aws_subnet.nodejs-ecs_privatesubnet["priv_a"].id, aws_subnet.nodejs-ecs_privatesubnet["priv_b"].id]
+    security_groups  = [aws_security_group.nodejs-ecs_ecssg.id]
     assign_public_ip = true
   }
 
 }
 
-resource "aws_security_group" "this" {
+resource "aws_security_group" "nodejs-ecs_ecssg" {
   name        = "Terraform-ECS TASK SG"
   description = "Terraform-ECS SG"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = aws_vpc.nodejs-ecs_vpc.id
 
+  #Allow inbound traffic from ALB
   ingress {
     protocol        = "tcp"
     from_port       = var.container_port
     to_port         = var.container_port
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.nodejs-ecs_albsg.id]
   }
 
+  #Allow Outbound
   egress {
     protocol    = "-1"
     from_port   = 0
