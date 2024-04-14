@@ -86,7 +86,7 @@ resource "aws_ecs_service" "nodejs-ecs_service" {
   desired_count       = var.desired_capacity
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.this.arn
+    target_group_arn = aws_lb_target_group.nodejs-ecs_lbtg.arn
     container_name   = aws_ecs_task_definition.nodejs-ecs_td.family
     container_port   = var.container_port
   }

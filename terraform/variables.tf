@@ -11,7 +11,7 @@ variable "aws_secret_key" {
 variable "tfstate_bucket_name" {
   type        = string
   description = "name of s3 bucket for tfstate"
-  default = "nmatheus-tfstate-bucket"
+  default     = "nmatheus-tfstate-bucket"
 }
 
 
